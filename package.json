@@ -1,0 +1,9 @@
+{
+  "name": "gemini-proxy",
+  "version": "1.0.0",
+  "description": "Secure proxy server for Gemini API",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
