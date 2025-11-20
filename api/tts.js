@@ -2,9 +2,9 @@
 // API 키를 서버에서만 관리하여 클라이언트 노출 방지
 
 export default async function handler(req, res) {
-    // CORS 설정
+    // CORS 설정 - 모든 요청에 대해 먼저 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     // Preflight 요청 처리
@@ -31,10 +31,11 @@ export default async function handler(req, res) {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorText = await response.text();
+                console.error('ElevenLabs Voices API Error:', errorText);
                 return res.status(response.status).json({ 
                     error: 'ElevenLabs API error', 
-                    details: errorData 
+                    details: errorText 
                 });
             }
 
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('ElevenLabs API Error:', errorText);
+                console.error('ElevenLabs TTS API Error:', errorText);
                 return res.status(response.status).json({ 
                     error: 'ElevenLabs API error', 
                     details: errorText 
