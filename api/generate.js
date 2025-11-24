@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         }
 
         // Gemini API 호출
-        const geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';
+        const geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
         
         const response = await fetch(geminiEndpoint, {
             method: 'POST',
