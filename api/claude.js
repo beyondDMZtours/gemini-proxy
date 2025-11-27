@@ -1,5 +1,5 @@
   // /api/claude.js - CORS 완벽 해결 버전 (Multi-Image 지원)
-  export default async function handler(req, res) {
+  module.exports = async function handler(req, res) {
     // CORS 헤더 설정
     const allowedOrigins = [
       'http://localhost:3000',
