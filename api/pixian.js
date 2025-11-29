@@ -3,7 +3,8 @@
 // Deploy to: gemini-proxy-gold-mu.vercel.app/api/pixian
 //
 // Environment Variables Required:
-// - PIXIAN_API_KEY: Your Pixian.ai API key (from https://pixian.ai/api)
+// - PIXIAN_API_ID: Your Pixian.ai API ID (from https://pixian.ai/api)
+// - PIXIAN_API_SECRET: Your Pixian.ai API Secret (from https://pixian.ai/api)
 //
 // NO ADDITIONAL PACKAGES REQUIRED! (form-data 불필요)
 
@@ -30,9 +31,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.PIXIAN_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'PIXIAN_API_KEY not configured' });
+  const apiId = process.env.PIXIAN_API_ID;
+  const apiSecret = process.env.PIXIAN_API_SECRET;
+
+  if (!apiId || !apiSecret) {
+    return res.status(500).json({ error: 'PIXIAN_API_ID or PIXIAN_API_SECRET not configured' });
   }
 
   try {
@@ -43,10 +46,11 @@ export default async function handler(req, res) {
     }
 
     // Pixian.ai API 호출 (Base64 URL 방식 - form-data 패키지 불필요!)
+    // HTTP Basic Auth: username = API ID, password = API Secret
     const pixianResponse = await fetch('https://api.pixian.ai/api/v2/remove-background', {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+        'Authorization': `Basic ${Buffer.from(apiId + ':' + apiSecret).toString('base64')}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: `image.base64=${encodeURIComponent(image)}`,
