@@ -53,7 +53,7 @@ export default async function handler(req, res) {
         'Authorization': `Basic ${Buffer.from(apiId + ':' + apiSecret).toString('base64')}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `image.base64=${encodeURIComponent(image)}&test=true`,
+      body: `image.base64=${encodeURIComponent(image)}`,
     });
 
     if (!pixianResponse.ok) {
