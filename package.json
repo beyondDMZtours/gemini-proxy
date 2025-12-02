@@ -1,9 +1,14 @@
   {
     "name": "gemini-elevenlabs-proxy",
     "version": "2.0.0",
-    "description": "Secure proxy server for Gemini and ElevenLabs APIs",
+    "description": "Secure proxy server for Gemini and ElevenLabs        
+  APIs",
     "private": true,
     "engines": {
       "node": ">=18.0.0"
+    },
+    "dependencies": {
+      "formidable": "^3.5.1",
+      "form-data": "^4.0.0"
     }
   }
