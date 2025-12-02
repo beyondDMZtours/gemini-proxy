@@ -1,11 +1,6 @@
 // api/sts.js - ElevenLabs Speech-to-Speech (Voice Changer) Proxy
-// Vercel Serverless Function
+// Vercel Serverless Function - 수정 버전
 
-import formidable from 'formidable';
-import fs from 'fs';
-import FormData from 'form-data';
-
-// Vercel에서 body parser 비활성화 (multipart 처리를 위해)
 export const config = {
   api: {
     bodyParser: false,
@@ -27,45 +22,37 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Multipart form data 파싱
-    const form = formidable({
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-    });
+    // 요청 body를 그대로 Buffer로 읽기
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
 
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve([fields, files]);
-      });
-    });
+    // Content-Type 헤더에서 boundary 추출
+    const contentType = req.headers['content-type'];
 
-    // 필드 추출 (formidable v3는 배열로 반환)
-    const voiceId = Array.isArray(fields.voice_id) ? fields.voice_id[0] : fields.voice_id;
-    const modelId = Array.isArray(fields.model_id) ? fields.model_id[0] : (fields.model_id || 'eleven_multilingual_sts_v2');
-    const removeNoise = Array.isArray(fields.remove_background_noise) ? fields.remove_background_noise[0] : fields.remove_background_noise;
+    // multipart 데이터 파싱
+    const boundary = contentType.split('boundary=')[1];
+    const parts = parseMultipart(buffer, boundary);
 
-    // 오디오 파일 가져오기
-    const audioFile = Array.isArray(files.audio) ? files.audio[0] : files.audio;
+    const voiceId = parts.voice_id;
+    const modelId = parts.model_id || 'eleven_multilingual_sts_v2';
+    const audioData = parts.audio;
+    const audioFilename = parts.audio_filename || 'recording.webm';
+    const audioContentType = parts.audio_contentType || 'audio/webm';
 
-    if (!audioFile || !voiceId) {
-      return res.status(400).json({ error: 'audio file and voice_id are required' });
+    if (!audioData || !voiceId) {
+      return res.status(400).json({ error: 'audio and voice_id are required' });
     }
 
     console.log('[STS] Voice ID:', voiceId);
-    console.log('[STS] Model ID:', modelId);
-    console.log('[STS] Audio file size:', audioFile.size);
+    console.log('[STS] Audio size:', audioData.length);
 
-    // ElevenLabs API로 전송할 FormData 생성
-    const elevenLabsFormData = new FormData();
-    elevenLabsFormData.append('audio', fs.createReadStream(audioFile.filepath), {
-      filename: audioFile.originalFilename || 'recording.webm',
-      contentType: audioFile.mimetype || 'audio/webm',
-    });
-    elevenLabsFormData.append('model_id', modelId);
-
-    if (removeNoise === 'true') {
-      elevenLabsFormData.append('remove_background_noise', 'true');
-    }
+    // ElevenLabs로 보낼 FormData 생성
+    const formData = new FormData();
+    formData.append('audio', new Blob([audioData], { type: audioContentType }), audioFilename);
+    formData.append('model_id', modelId);
 
     // ElevenLabs Speech-to-Speech API 호출
     const elevenLabsResponse = await fetch(
@@ -74,9 +61,8 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: {
           'xi-api-key': process.env.ELEVENLABS_API_KEY,
-          ...elevenLabsFormData.getHeaders(),
         },
-        body: elevenLabsFormData,
+        body: formData,
       }
     );
 
@@ -95,9 +81,6 @@ export default async function handler(req, res) {
 
     console.log('[STS] Success! Audio size:', audioBuffer.byteLength);
 
-    // 임시 파일 삭제
-    fs.unlink(audioFile.filepath, () => {});
-
     return res.status(200).json({
       audio_base64: base64Audio,
     });
@@ -109,4 +92,54 @@ export default async function handler(req, res) {
       details: error.message
     });
   }
+}
+
+// Multipart 데이터 파싱 함수
+function parseMultipart(buffer, boundary) {
+  const result = {};
+  const boundaryBuffer = Buffer.from('--' + boundary);
+  const parts = [];
+
+  let start = 0;
+  let idx = buffer.indexOf(boundaryBuffer, start);
+
+  while (idx !== -1) {
+    const nextIdx = buffer.indexOf(boundaryBuffer, idx + boundaryBuffer.length);
+    if (nextIdx === -1) break;
+
+    const partData = buffer.slice(idx + boundaryBuffer.length + 2, nextIdx - 2);
+    parts.push(partData);
+
+    idx = nextIdx;
+  }
+
+  for (const part of parts) {
+    const headerEnd = part.indexOf('\r\n\r\n');
+    if (headerEnd === -1) continue;
+
+    const headers = part.slice(0, headerEnd).toString();
+    const body = part.slice(headerEnd + 4);
+
+    // Content-Disposition에서 name 추출
+    const nameMatch = headers.match(/name="([^"]+)"/);
+    if (!nameMatch) continue;
+
+    const name = nameMatch[1];
+    const filenameMatch = headers.match(/filename="([^"]+)"/);
+    const contentTypeMatch = headers.match(/Content-Type:\s*([^\r\n]+)/i);
+
+    if (filenameMatch) {
+      // 파일인 경우
+      result[name] = body;
+      result[name + '_filename'] = filenameMatch[1];
+      if (contentTypeMatch) {
+        result[name + '_contentType'] = contentTypeMatch[1];
+      }
+    } else {
+      // 일반 필드인 경우
+      result[name] = body.toString().trim();
+    }
+  }
+
+  return result;
 }
