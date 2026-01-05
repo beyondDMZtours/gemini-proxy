@@ -53,7 +53,7 @@ export default async function handler(req, res) {
             }
 
             // ElevenLabs TTS with Timestamps API 호출 (Lip-Sync용)
-            const ttsEndpoint = `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}/with-timestamps?output_format=pcm_44100`;
+            const ttsEndpoint = `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}/with-timestamps?output_format=pcm_24000`;
 
             const requestBody = {
                 text: text,
